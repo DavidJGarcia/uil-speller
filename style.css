@@ -199,6 +199,45 @@ input[type="text"].wrong   { border-color: var(--bad);  background: #fef2f2; }
   display: block;
 }
 
+.definition {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: #f0f9ff;
+  color: #0c4a6e;
+  border: 1px solid #bae6fd;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.definition .def-pos {
+  display: inline-block;
+  font-style: italic;
+  color: #0369a1;
+  margin-right: 4px;
+  font-size: 0.85rem;
+}
+
+.definition .def-example {
+  margin-top: 4px;
+  font-style: italic;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.definition.loading {
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.flashcard-def {
+  text-align: left;
+  margin-top: 16px;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 480px;
+}
+
 .flashcard {
   text-align: center;
   padding: 40px 16px;

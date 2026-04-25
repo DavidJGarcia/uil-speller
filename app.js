@@ -95,6 +95,84 @@
     },
   };
 
+  // -------- Definition lookup --------
+  // Uses the Free Dictionary API (dictionaryapi.dev). Each word fetches once,
+  // then is cached in localStorage forever. Failures degrade gracefully.
+  const DEFS_KEY = 'uil-speller:defs:v1';
+
+  const defs = {
+    cache: null,
+
+    loadCache() {
+      if (this.cache) return this.cache;
+      try {
+        this.cache = JSON.parse(localStorage.getItem(DEFS_KEY) || '{}') || {};
+      } catch {
+        this.cache = {};
+      }
+      return this.cache;
+    },
+
+    saveCache() {
+      try { localStorage.setItem(DEFS_KEY, JSON.stringify(this.cache || {})); } catch {}
+    },
+
+    // Returns one of:
+    //   { def, pos, example }   — found
+    //   { notFound: true }      — API said 404
+    //   { error: '...' }        — network / parse error (not cached)
+    async lookup(word) {
+      this.loadCache();
+      const key = word.toLowerCase();
+      if (this.cache[key]) return this.cache[key];
+
+      const url = 'https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(word);
+      try {
+        const res = await fetch(url);
+        if (res.status === 404) {
+          const miss = { notFound: true };
+          this.cache[key] = miss;
+          this.saveCache();
+          return miss;
+        }
+        if (!res.ok) return { error: 'lookup failed (' + res.status + ')' };
+        const data = await res.json();
+        const entry = Array.isArray(data) ? data[0] : null;
+        if (!entry || !entry.meanings || !entry.meanings.length) {
+          const miss = { notFound: true };
+          this.cache[key] = miss;
+          this.saveCache();
+          return miss;
+        }
+        // Take the top 2 definitions across the first 2 parts of speech.
+        const out = { defs: [] };
+        for (const m of entry.meanings.slice(0, 2)) {
+          const d = m.definitions && m.definitions[0];
+          if (d) out.defs.push({ pos: m.partOfSpeech || '', def: d.definition || '', example: d.example || '' });
+        }
+        this.cache[key] = out;
+        this.saveCache();
+        return out;
+      } catch (e) {
+        return { error: 'no internet?' };
+      }
+    },
+
+    // Format a lookup result as plain HTML. Caller chooses where to insert it.
+    formatHtml(result) {
+      if (!result) return '';
+      if (result.notFound) return '<em>No definition found.</em>';
+      if (result.error) return '<em>Couldn\'t fetch (' + escapeHtml(result.error) + ').</em>';
+      const defs = result.defs || [];
+      if (!defs.length) return '<em>No definition found.</em>';
+      return defs.map(d => {
+        const pos = d.pos ? '<span class="def-pos">' + escapeHtml(d.pos) + '</span> ' : '';
+        const ex = d.example ? '<div class="def-example">"' + escapeHtml(d.example) + '"</div>' : '';
+        return '<div>' + pos + escapeHtml(d.def) + ex + '</div>';
+      }).join('');
+    },
+  };
+
   // -------- Progress / HUD --------
   function masteryCount() {
     let c = 0;
@@ -180,6 +258,7 @@
       const input = document.getElementById('practice-input');
       const feedback = document.getElementById('practice-feedback');
       const hintEl = document.getElementById('practice-hint');
+      const defEl = document.getElementById('practice-definition');
       input.value = '';
       input.className = '';
       input.disabled = false;
@@ -188,6 +267,10 @@
       feedback.hidden = true;
       feedback.className = 'feedback';
       feedback.textContent = '';
+      // Hide any leftover definition from the previous word.
+      defEl.hidden = true;
+      defEl.innerHTML = '';
+      defEl.classList.remove('loading');
 
       const bits = [];
       if (this.current.hint) bits.push(`hint: ${this.current.hint}`);
@@ -222,6 +305,22 @@
 
     speak() {
       if (this.current) tts.speak(this.current.accepted[0]);
+    },
+
+    async showDefinition() {
+      if (!this.current) return;
+      const word = this.current.accepted[0];
+      const defEl = document.getElementById('practice-definition');
+      // Pin which word this lookup is for, so a slow response that arrives
+      // after the kid advances doesn't paint a stale definition.
+      const forWord = word;
+      defEl.hidden = false;
+      defEl.classList.add('loading');
+      defEl.innerHTML = 'Looking up…';
+      const result = await defs.lookup(word);
+      if (!this.current || this.current.accepted[0] !== forWord) return;
+      defEl.classList.remove('loading');
+      defEl.innerHTML = defs.formatHtml(result);
     },
 
     submit() {
@@ -313,6 +412,20 @@
         bits.push('capital required');
       }
       hintEl.textContent = bits.join('  ·  ');
+      this.loadDefinition(w);
+    },
+
+    async loadDefinition(w) {
+      const defEl = document.getElementById('flash-definition');
+      const forWord = w.accepted[0];
+      defEl.classList.add('loading');
+      defEl.innerHTML = 'Looking up…';
+      const result = await defs.lookup(forWord);
+      // Don't paint stale definitions if the kid clicked Next mid-fetch.
+      const cur = this.pool[this.idx];
+      if (!cur || cur.accepted[0] !== forWord) return;
+      defEl.classList.remove('loading');
+      defEl.innerHTML = defs.formatHtml(result);
     },
 
     prev() { this.idx = (this.idx - 1 + this.pool.length) % this.pool.length; this.render(); this.speak(); },
@@ -462,6 +575,7 @@
     document.getElementById('practice-speak').addEventListener('click', () => practice.speak());
     document.getElementById('practice-submit').addEventListener('click', () => practice.submit());
     document.getElementById('practice-skip').addEventListener('click', () => practice.skip());
+    document.getElementById('practice-define').addEventListener('click', () => practice.showDefinition());
     document.getElementById('practice-input').addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); practice.submit(); }
     });

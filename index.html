@@ -50,8 +50,10 @@
     <input type="text" id="practice-input" placeholder="Type what you hear…" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
     <div class="row">
       <button class="big-btn ghost" id="practice-submit">Check</button>
+      <button class="small" id="practice-define">📖 Definition</button>
       <button class="small" id="practice-skip">Skip</button>
     </div>
+    <div id="practice-definition" class="definition" hidden></div>
     <div id="practice-feedback" class="feedback" hidden></div>
   </section>
 
@@ -61,6 +63,7 @@
       <div class="meta" id="flash-meta">—</div>
       <div class="word" id="flash-word">—</div>
       <div class="meta" id="flash-hint"></div>
+      <div id="flash-definition" class="definition flashcard-def"></div>
     </div>
     <div class="row">
       <button class="small" id="flash-prev">← Prev</button>
