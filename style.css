@@ -277,6 +277,51 @@ input[type="text"].wrong   { border-color: var(--bad);  background: #fef2f2; }
   font-size: 0.95rem;
 }
 
+.range-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  background: #f9fafb;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+.range-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.range-fields {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.range-fields input[type="number"] {
+  width: 76px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.range-count {
+  margin-left: 8px;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.test-range-row { margin-top: 14px; }
+
 .test-config { display: grid; gap: 14px; }
 
 .test-config label {

@@ -40,8 +40,22 @@
         ttsRate: 0.9,
         voiceURI: null,     // stored voice URI
         useFullPool: false, // if true, Practice draws from all 800
+        flashRange: { enabled: false, from: 1,  to: 30  },
+        testRange:  { enabled: false, from: 1,  to: 80  },
       },
     };
+  }
+
+  // Clamp a range to the valid 1..800 window and ensure from <= to.
+  function normRange(r) {
+    const from = Math.max(1, Math.min(800, parseInt(r.from, 10) || 1));
+    const to   = Math.max(1, Math.min(800, parseInt(r.to,   10) || 1));
+    return { enabled: !!r.enabled, from: Math.min(from, to), to: Math.max(from, to) };
+  }
+
+  function entriesInRange(r) {
+    const n = normRange(r);
+    return WORDS.filter(w => w.n >= n.from && w.n <= n.to);
   }
 
   function saveState() {
@@ -399,7 +413,14 @@
     lastResult: null,   // 'correct' | 'wrong' | null
 
     enter() {
-      this.pool = state.settings.useFullPool ? WORDS : todaysBatchEntries();
+      const fr = state.settings.flashRange;
+      if (fr && fr.enabled) {
+        this.pool = entriesInRange(fr);
+      } else if (state.settings.useFullPool) {
+        this.pool = WORDS;
+      } else {
+        this.pool = todaysBatchEntries();
+      }
       if (this.pool.length === 0) this.pool = WORDS;
       if (this.idx >= this.pool.length) this.idx = 0;
       this.state = 'study';
@@ -528,13 +549,20 @@
       const main = parseInt(document.getElementById('test-main').value, 10) || 80;
       const tie  = parseInt(document.getElementById('test-tie').value, 10) || 0;
       const pool = document.getElementById('test-pool').value;
+      const tr   = state.settings.testRange;
 
-      const candidates = pool === 'unmastered'
-        ? WORDS.filter(w => !S.isMastered(state.progress[w.n]))
-        : WORDS.slice();
+      let candidates = WORDS.slice();
+      if (tr && tr.enabled) {
+        candidates = entriesInRange(tr);
+      }
+      if (pool === 'unmastered') {
+        candidates = candidates.filter(w => !S.isMastered(state.progress[w.n]));
+      }
 
       if (candidates.length < main + tie) {
-        alert(`Not enough ${pool === 'unmastered' ? 'unmastered' : ''} words for a ${main + tie}-word test. Reduce counts or switch pool.`);
+        const where = tr && tr.enabled ? ` in words ${tr.from}-${tr.to}` : '';
+        const which = pool === 'unmastered' ? 'unmastered ' : '';
+        alert(`Not enough ${which}words${where} for a ${main + tie}-word test. Reduce counts, widen the range, or switch pool.`);
         return;
       }
 
@@ -636,6 +664,36 @@
     })[c]);
   }
 
+  // Generic wiring for the "Pick a range" UI used in both Flashcards and Test.
+  // The caller supplies element IDs and getters/setters so the same code works
+  // for both (each mode persists its own range to settings).
+  function wireRange(spec) {
+    const en   = document.getElementById(spec.keyEnabled);
+    const from = document.getElementById(spec.keyFrom);
+    const to   = document.getElementById(spec.keyTo);
+    const wrap = document.getElementById(spec.keyFields);
+    const ct   = document.getElementById(spec.keyCount);
+
+    function paint() {
+      const r = normRange(spec.get());
+      en.checked = r.enabled;
+      from.value = r.from;
+      to.value   = r.to;
+      wrap.hidden = !r.enabled;
+      ct.textContent = r.enabled ? `(${entriesInRange(r).length} words)` : '';
+    }
+
+    function commit() {
+      spec.set(normRange({ enabled: en.checked, from: from.value, to: to.value }));
+      paint();
+    }
+
+    en.addEventListener('change', commit);
+    from.addEventListener('change', commit);
+    to.addEventListener('change',   commit);
+    paint();
+  }
+
   // -------- Wire up events --------
   function init() {
     // Tabs
@@ -661,6 +719,27 @@
     document.getElementById('flash-cont').addEventListener('click',  () => flash.cont());
     document.getElementById('flash-input').addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); flash.check(); }
+    });
+
+    // Flashcard range controls
+    wireRange({
+      keyEnabled: 'flash-range-enabled',
+      keyFrom:    'flash-range-from',
+      keyTo:      'flash-range-to',
+      keyFields:  'flash-range-fields',
+      keyCount:   'flash-range-count',
+      get: () => state.settings.flashRange,
+      set: r => { state.settings.flashRange = r; saveState(); flash.idx = 0; flash.enter(); },
+    });
+    // Test range controls
+    wireRange({
+      keyEnabled: 'test-range-enabled',
+      keyFrom:    'test-range-from',
+      keyTo:      'test-range-to',
+      keyFields:  'test-range-fields',
+      keyCount:   'test-range-count',
+      get: () => state.settings.testRange,
+      set: r => { state.settings.testRange = r; saveState(); },
     });
 
     // Test
