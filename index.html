@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UIL 5th-Grade Speller — 2026</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>UIL 5th-Grade Speller · 2026</h1>
+    <div class="progress">
+      <span id="mastery-count"><strong>0</strong> / 800 mastered</span>
+      <span id="batch-count">today: <strong>0 / 20</strong></span>
+      <button class="settings-toggle" id="settings-toggle" aria-label="Settings">Settings</button>
+    </div>
+  </header>
+
+  <div class="settings-panel" id="settings">
+    <label>Today's batch size
+      <input type="number" id="batch-size" min="5" max="100" step="5" value="20">
+    </label>
+    <label>Speaking rate
+      <input type="range" id="tts-rate" min="0.6" max="1.3" step="0.05" value="0.9">
+      <span id="tts-rate-display">0.9</span>
+    </label>
+    <label>Voice
+      <select id="tts-voice"></select>
+    </label>
+    <div class="setting-row">
+      <span>Reset all progress</span>
+      <button class="danger" id="reset-progress" type="button">Reset</button>
+    </div>
+    <label>
+      <span>Use full 800-word pool (ignore batch)</span>
+      <input type="checkbox" id="use-full-pool">
+    </label>
+  </div>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-mode="practice" role="tab">Practice</button>
+    <button class="tab" data-mode="flash" role="tab">Flashcards</button>
+    <button class="tab" data-mode="test"  role="tab">Test</button>
+  </nav>
+
+  <!-- Practice -->
+  <section class="panel" id="panel-practice">
+    <button class="big-btn" id="practice-speak">🔊 Hear the word</button>
+    <div id="practice-hint" class="hint" hidden></div>
+    <input type="text" id="practice-input" placeholder="Type what you hear…" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+    <div class="row">
+      <button class="big-btn ghost" id="practice-submit">Check</button>
+      <button class="small" id="practice-skip">Skip</button>
+    </div>
+    <div id="practice-feedback" class="feedback" hidden></div>
+  </section>
+
+  <!-- Flashcards -->
+  <section class="panel hidden" id="panel-flash">
+    <div class="flashcard">
+      <div class="meta" id="flash-meta">—</div>
+      <div class="word" id="flash-word">—</div>
+      <div class="meta" id="flash-hint"></div>
+    </div>
+    <div class="row">
+      <button class="small" id="flash-prev">← Prev</button>
+      <button class="big-btn" id="flash-speak">🔊 Hear</button>
+      <button class="small" id="flash-next">Next →</button>
+    </div>
+  </section>
+
+  <!-- Test Simulator -->
+  <section class="panel hidden" id="panel-test">
+    <div id="test-setup">
+      <h2 style="margin-top:0">Test Simulator</h2>
+      <p style="color: var(--ink-soft)">Matches the UIL format: 80 main words + 20 tiebreaker, read at 5 words per minute.</p>
+      <div class="test-config">
+        <label>Main-test words <input type="number" id="test-main" min="10" max="800" step="5" value="80"></label>
+        <label>Tiebreaker words <input type="number" id="test-tie" min="0" max="100" step="5" value="20"></label>
+        <label>Words per minute <input type="number" id="test-wpm" min="2" max="12" step="1" value="5"></label>
+        <label>Draw from <select id="test-pool">
+          <option value="unmastered">Unmastered words only</option>
+          <option value="all" selected>Full 800-word list</option>
+        </select></label>
+      </div>
+      <div class="row" style="margin-top: 20px">
+        <button class="big-btn" id="test-start">Start Test</button>
+      </div>
+    </div>
+
+    <div id="test-run" hidden>
+      <div class="test-status" id="test-status">Word 1 of 80</div>
+      <div class="test-word-number" id="test-word-number">#1</div>
+      <button class="big-btn ghost" id="test-replay">🔊 Repeat the word</button>
+      <input type="text" id="test-input" placeholder="Type what you hear…" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div class="row">
+        <button class="big-btn" id="test-next">Submit answer</button>
+        <button class="small" id="test-quit">Quit</button>
+      </div>
+    </div>
+
+    <div id="test-results" class="results" hidden></div>
+  </section>
+
+  <!-- Scripts: plain tags so the app runs via file:// with no server -->
+  <script src="words.js"></script>
+  <script src="core.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
