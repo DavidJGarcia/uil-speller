@@ -426,10 +426,8 @@
       const w = this.pool[this.idx];
       const input = document.getElementById('flash-input');
       const correct = S.isCorrect(input.value, w);
-      // Flashcard attempts feed mastery the same way Practice does.
-      state.progress[w.n] = S.updateProgress(state.progress[w.n], correct, Date.now());
-      saveState();
-      updateHud();
+      // Flashcards are a study mode — attempts here don't update mastery.
+      // Practice is the canonical place to earn streaks.
       this.lastResult = correct ? 'correct' : 'wrong';
       this.state = 'result';
       this.render();
@@ -478,9 +476,7 @@
       if (isResult) {
         if (this.lastResult === 'correct') {
           resultEl.className = 'feedback flash-result correct';
-          const masteredNow = S.isMastered(state.progress[w.n]);
-          const trophy = masteredNow ? ' <span style="font-size:1.2rem">🏆 mastered!</span>' : '';
-          resultEl.innerHTML = `Correct! <span class="answer">${escapeHtml(w.display)}</span>${trophy}`;
+          resultEl.innerHTML = `Correct! <span class="answer">${escapeHtml(w.display)}</span>`;
         } else {
           resultEl.className = 'feedback flash-result wrong';
           const altNote = w.accepted.length > 1 ? ' (either spelling is OK)' : '';
