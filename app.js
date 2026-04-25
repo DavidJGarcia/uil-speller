@@ -40,8 +40,9 @@
         ttsRate: 0.9,
         voiceURI: null,     // stored voice URI
         useFullPool: false, // if true, Practice draws from all 800
-        flashRange: { enabled: false, from: 1,  to: 30  },
-        testRange:  { enabled: false, from: 1,  to: 80  },
+        practiceRange: { enabled: false, from: 1, to: 30 },
+        flashRange:    { enabled: false, from: 1, to: 30 },
+        testRange:     { enabled: false, from: 1, to: 80 },
       },
     };
   }
@@ -206,6 +207,10 @@
   }
 
   function currentBatch() {
+    const pr = state.settings.practiceRange;
+    if (pr && pr.enabled) {
+      return entriesInRange(pr).map(e => e.n);
+    }
     if (state.settings.useFullPool) return null;
     return todaysBatchEntries().map(e => e.n);
   }
@@ -216,7 +221,12 @@
       `<strong>${m}</strong> / 800 mastered`;
 
     const bEl = document.getElementById('batch-count');
-    if (state.settings.useFullPool) {
+    const pr = state.settings.practiceRange;
+    if (pr && pr.enabled) {
+      const inRange = entriesInRange(pr);
+      const masteredInRange = inRange.filter(w => S.isMastered(state.progress[w.n])).length;
+      bEl.innerHTML = `range ${pr.from}-${pr.to}: <strong>${masteredInRange} / ${inRange.length}</strong>`;
+    } else if (state.settings.useFullPool) {
       bEl.innerHTML = `<strong>full list</strong>`;
     } else {
       bEl.innerHTML = `today: <strong>${todaysBatchEntries().length}</strong> to go`;
@@ -721,6 +731,23 @@
       if (e.key === 'Enter') { e.preventDefault(); flash.check(); }
     });
 
+    // Practice range controls
+    wireRange({
+      keyEnabled: 'practice-range-enabled',
+      keyFrom:    'practice-range-from',
+      keyTo:      'practice-range-to',
+      keyFields:  'practice-range-fields',
+      keyCount:   'practice-range-count',
+      get: () => state.settings.practiceRange,
+      set: r => {
+        state.settings.practiceRange = r;
+        saveState();
+        updateHud();
+        // Refresh the current word so the kid lands inside the new pool.
+        practice.sessionWrong = [];
+        practice.next();
+      },
+    });
     // Flashcard range controls
     wireRange({
       keyEnabled: 'flash-range-enabled',
