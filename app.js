@@ -388,23 +388,72 @@
   };
 
   // -------- Flashcards --------
+  // Three-state cycle:
+  //   study  — word + definition visible. Kid taps "I'm ready" to advance.
+  //   recall — word hidden, definition stays as the cue. Kid types and Checks.
+  //   result — actual word revealed, ✓ or ✗ shown. Kid taps "Next card".
   const flash = {
     idx: 0,
     pool: [],
+    state: 'study',     // 'study' | 'recall' | 'result'
+    lastResult: null,   // 'correct' | 'wrong' | null
 
     enter() {
       this.pool = state.settings.useFullPool ? WORDS : todaysBatchEntries();
-      if (this.pool.length === 0) this.pool = WORDS; // fallback when batch empty
+      if (this.pool.length === 0) this.pool = WORDS;
       if (this.idx >= this.pool.length) this.idx = 0;
+      this.state = 'study';
+      this.lastResult = null;
       this.render();
+    },
+
+    setCard(idx) {
+      this.idx = idx;
+      this.state = 'study';
+      this.lastResult = null;
+      this.render();
+    },
+
+    ready() {
+      this.state = 'recall';
+      this.render();
+      const input = document.getElementById('flash-input');
+      input.value = '';
+      input.focus();
+    },
+
+    check() {
+      const w = this.pool[this.idx];
+      const input = document.getElementById('flash-input');
+      const correct = S.isCorrect(input.value, w);
+      // Flashcard attempts feed mastery the same way Practice does.
+      state.progress[w.n] = S.updateProgress(state.progress[w.n], correct, Date.now());
+      saveState();
+      updateHud();
+      this.lastResult = correct ? 'correct' : 'wrong';
+      this.state = 'result';
+      this.render();
+    },
+
+    cont() {
+      this.setCard((this.idx + 1) % this.pool.length);
     },
 
     render() {
       const w = this.pool[this.idx];
+      const wordEl     = document.getElementById('flash-word');
+      const wordHidden = document.getElementById('flash-word-hidden');
+      const hintEl     = document.getElementById('flash-hint');
+      const inputEl    = document.getElementById('flash-input');
+      const resultEl   = document.getElementById('flash-result');
+      const readyBtn   = document.getElementById('flash-ready');
+      const checkBtn   = document.getElementById('flash-check');
+      const contBtn    = document.getElementById('flash-cont');
+
       document.getElementById('flash-meta').textContent =
         `${this.idx + 1} / ${this.pool.length}  ·  #${w.n}`;
-      document.getElementById('flash-word').textContent = w.display;
-      const hintEl = document.getElementById('flash-hint');
+      wordEl.textContent = w.display;
+
       const bits = [];
       if (w.hint) bits.push(`hint: ${w.hint}`);
       if (w.accepted.length > 1) bits.push(`either: ${w.accepted.join(' / ')}`);
@@ -412,6 +461,34 @@
         bits.push('capital required');
       }
       hintEl.textContent = bits.join('  ·  ');
+
+      // Visibility per state.
+      const isStudy  = this.state === 'study';
+      const isRecall = this.state === 'recall';
+      const isResult = this.state === 'result';
+
+      wordEl.hidden     = isRecall;             // hide word during recall
+      wordHidden.hidden = !isRecall;
+      inputEl.hidden    = !isRecall;
+      resultEl.hidden   = !isResult;
+      readyBtn.hidden   = !isStudy;
+      checkBtn.hidden   = !isRecall;
+      contBtn.hidden    = !isResult;
+
+      if (isResult) {
+        if (this.lastResult === 'correct') {
+          resultEl.className = 'feedback flash-result correct';
+          const masteredNow = S.isMastered(state.progress[w.n]);
+          const trophy = masteredNow ? ' <span style="font-size:1.2rem">🏆 mastered!</span>' : '';
+          resultEl.innerHTML = `Correct! <span class="answer">${escapeHtml(w.display)}</span>${trophy}`;
+        } else {
+          resultEl.className = 'feedback flash-result wrong';
+          const altNote = w.accepted.length > 1 ? ' (either spelling is OK)' : '';
+          const yours = inputEl.value ? ` (you typed <em>${escapeHtml(inputEl.value)}</em>)` : '';
+          resultEl.innerHTML = `Not quite — the answer is <span class="answer">${escapeHtml(w.display)}</span>${altNote}${yours}.`;
+        }
+      }
+
       this.loadDefinition(w);
     },
 
@@ -421,15 +498,14 @@
       defEl.classList.add('loading');
       defEl.innerHTML = 'Looking up…';
       const result = await defs.lookup(forWord);
-      // Don't paint stale definitions if the kid clicked Next mid-fetch.
       const cur = this.pool[this.idx];
       if (!cur || cur.accepted[0] !== forWord) return;
       defEl.classList.remove('loading');
       defEl.innerHTML = defs.formatHtml(result);
     },
 
-    prev() { this.idx = (this.idx - 1 + this.pool.length) % this.pool.length; this.render(); this.speak(); },
-    next() { this.idx = (this.idx + 1) % this.pool.length; this.render(); this.speak(); },
+    prev() { this.setCard((this.idx - 1 + this.pool.length) % this.pool.length); this.speak(); },
+    next() { this.setCard((this.idx + 1) % this.pool.length); this.speak(); },
 
     speak() {
       const w = this.pool[this.idx];
@@ -584,6 +660,12 @@
     document.getElementById('flash-prev').addEventListener('click',  () => flash.prev());
     document.getElementById('flash-next').addEventListener('click',  () => flash.next());
     document.getElementById('flash-speak').addEventListener('click', () => flash.speak());
+    document.getElementById('flash-ready').addEventListener('click', () => flash.ready());
+    document.getElementById('flash-check').addEventListener('click', () => flash.check());
+    document.getElementById('flash-cont').addEventListener('click',  () => flash.cont());
+    document.getElementById('flash-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); flash.check(); }
+    });
 
     // Test
     document.getElementById('test-start').addEventListener('click', () => testMode.start());

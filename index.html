@@ -62,12 +62,20 @@
     <div class="flashcard">
       <div class="meta" id="flash-meta">—</div>
       <div class="word" id="flash-word">—</div>
+      <div class="word-placeholder" id="flash-word-hidden" hidden>spell it!</div>
       <div class="meta" id="flash-hint"></div>
       <div id="flash-definition" class="definition flashcard-def"></div>
+      <input type="text" id="flash-input" class="flash-input" placeholder="Type the word…" autocomplete="off" autocapitalize="off" spellcheck="false" hidden>
+      <div id="flash-result" class="feedback flash-result" hidden></div>
+    </div>
+    <div class="row">
+      <button class="big-btn" id="flash-ready">I'm ready — let me try</button>
+      <button class="big-btn ghost" id="flash-check" hidden>Check spelling</button>
+      <button class="big-btn" id="flash-cont" hidden>Next card →</button>
     </div>
     <div class="row">
       <button class="small" id="flash-prev">← Prev</button>
-      <button class="big-btn" id="flash-speak">🔊 Hear</button>
+      <button class="small" id="flash-speak">🔊 Hear</button>
       <button class="small" id="flash-next">Next →</button>
     </div>
   </section>
